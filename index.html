@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Minaar • 4×6 Postage Label Printer</title>
+  <style>
+    :root{ --bg:#0b0c10; --panel:#111318; --ink:#e8e8e8; --muted:#a9a9a9; --accent:#6ee7b7; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{display:grid;grid-template-columns:360px 1fr;min-height:100svh}
+    aside{background:var(--panel);padding:18px 16px;border-right:1px solid #1d1f27}
+    main{padding:18px 16px;display:grid;place-items:center}
+    h1{font-size:18px;margin:0 0 12px;display:flex;gap:8px;align-items:center}
+    h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+    fieldset{border:1px solid #20232b;border-radius:12px;padding:12px;margin:0 0 12px}
+    legend{padding:0 6px;color:var(--muted)}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input, textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #232733;background:#0e1015;color:var(--ink)}
+    textarea{min-height:140px;resize:vertical}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    button{cursor:pointer;border:0;border-radius:999px;padding:10px 14px;background:#1b1f2d;color:var(--ink)}
+    button.primary{background:var(--accent);color:#0a0a0a;font-weight:700}
+    button.ghost{background:transparent;border:1px dashed #2a2f40}
+
+    /* Fixed 4×6in (100×150mm) label area */
+    .board{display:grid;place-items:center;width:100%}
+    .label{background:#fff;color:#000;position:relative;display:flex;flex-direction:column;gap:12px;padding:14px;border:1px dashed #ddd;width:100mm;height:150mm;justify-content:space-between}
+    .label *{color:#000}
+    .to{font-weight:800;font-size:18px;letter-spacing:0.5px}
+    .toBox{border:2px solid #000;border-radius:8px;padding:12px;min-height:60mm;display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
+    .toLine{display:flex;gap:8px;align-items:flex-start}
+    .toLabel{width:90px;font-weight:700}
+    .toValue{flex:1;word-break:break-word;white-space:pre-wrap;font-size:15px;line-height:1.6;border-bottom:1px solid #000;min-height:22px}
+    .from{border:1px solid #000;border-radius:8px;padding:10px;font-size:13px;margin-top:16px}
+    .from .title{font-weight:800;margin-bottom:6px}
+    .qr{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:0px}
+    .qr img{width:140px;height:140px;object-fit:contain;display:block}
+    .qr-text{font-weight:700;font-size:14px;text-align:center;margin-top:-5px}
+
+    @media print{
+      body{margin:0;background:#fff}
+      .wrap, aside{display:none}
+      main{display:block;padding:0}
+      .print-area{display:grid;place-items:center}
+      .label{border:none;margin:0}
+      @page{size:100mm 150mm; margin:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside>
+      <h1><span class="dot"></span> Minaar Postage Labels</h1>
+
+      <fieldset>
+        <legend>Recipient (prints under “TO”)</legend>
+        <label>Name</label>
+        <input id="name" placeholder="Full name" />
+        <label>Phone number</label>
+        <input id="phone" placeholder="04xx xxx xxx" />
+        <label>Address</label>
+        <textarea id="address" placeholder="Street, suburb, state & postcode"></textarea>
+      </fieldset>
+
+      <div class="btns">
+        <button class="primary" id="printBtn" type="button">Print 4×6 label</button>
+        <button id="clearBtn" class="ghost" type="button">Clear</button>
+      </div>
+
+      <p style="color:var(--muted);margin-top:10px">
+        Fixed size: <strong>4×6 in (100×150mm)</strong>. In the print dialog, choose your label printer and disable headers/footers. Scale 100%.
+      </p>
+    </aside>
+
+    <main>
+      <div class="board">
+        <div class="label" id="label">
+          <div>
+            <div class="to">TO :</div>
+            <div class="toBox">
+              <div class="toLine"><div class="toLabel">Name :</div><div id="outName" class="toValue"></div></div>
+              <div class="toLine"><div class="toLabel">Phone :</div><div id="outPhone" class="toValue"></div></div>
+              <div class="toLine"><div class="toLabel">Address :</div><div id="outAddress" class="toValue"></div></div>
+            </div>
+
+            <div class="from">
+              <div class="title">FROM : Minaar</div>
+              <div><strong>Phone</strong>: +61 434 786 802</div>
+              <div><strong>Address</strong>: 2A/18 Harrow Road, Auburn, 2144, NSW</div>
+              <div><strong>Website</strong>: www.minaar.com.au</div>
+            </div>
+          </div>
+
+          <div class="qr">
+            <div class="qr-text">Join our WhatsApp Group for latest products</div>
+            <img id="qrImage" alt="WhatsApp QR Code" />
+
+          </div>
+
+        </div>
+      </div>
+      <div class="print-area" aria-hidden="true"></div>
+    </main>
+  </div>
+
+  <script>
+    const els = {
+      name: document.getElementById('name'),
+      address: document.getElementById('address'),
+      phone: document.getElementById('phone'),
+      outName: document.getElementById('outName'),
+      outAddress: document.getElementById('outAddress'),
+      outPhone: document.getElementById('outPhone'),
+      label: document.getElementById('label'),
+      printBtn: document.getElementById('printBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      qrImage: document.getElementById('qrImage')
+    };
+
+    // Ensure QR code loads correctly, adjust path if needed
+    els.qrImage.src = './whatsapp-group-qr-code.jpg';
+
+    const LS_KEY = 'minaar:postage:v1';
+    function save(){
+      const s = { name: els.name.value, address: els.address.value, phone: els.phone.value };
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
+    }
+    function load(){
+      try{ const s = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+        els.name.value = s.name||''; els.address.value = s.address||''; els.phone.value = s.phone||'';
+      }catch(e){}
+    }
+
+    function bind(input, outEl){
+      const fn = ()=>{ outEl.textContent = input.value.trim(); save(); };
+      input.addEventListener('input', fn); fn();
+    }
+
+    bind(els.name, els.outName);
+    bind(els.phone, els.outPhone);
+    bind(els.address, els.outAddress);
+
+    els.printBtn.addEventListener('click', ()=>{
+      const area = document.querySelector('.print-area');
+      area.innerHTML='';
+      const clone = els.label.cloneNode(true);
+      clone.style.border='none';
+      area.appendChild(clone);
+      setTimeout(()=>window.print(),0);
+    });
+
+    els.clearBtn.addEventListener('click', ()=>{
+      els.name.value=''; els.address.value=''; els.phone.value='';
+      els.outName.textContent=''; els.outAddress.textContent=''; els.outPhone.textContent='';
+      save();
+    });
+
+    load();
+  </script>
+</body>
+</html>
