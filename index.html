@@ -34,16 +34,16 @@
     .toValue{flex:1;word-break:break-word;white-space:pre-wrap;font-size:15px;line-height:1.6;border-bottom:1px solid #000;min-height:22px}
     .from{border:1px solid #000;border-radius:8px;padding:10px;font-size:13px;margin-top:16px}
     .from .title{font-weight:800;margin-bottom:6px}
-    .qr{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:0px}
+    .qr{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:-10px}
     .qr img{width:140px;height:140px;object-fit:contain;display:block}
-    .qr-text{font-weight:700;font-size:14px;text-align:center;margin-top:-5px}
+    .qr-text{font-weight:700;font-size:14px;text-align:center;margin-top:0px}
 
     @media print{
       body{margin:0;background:#fff}
-      .wrap, aside{display:none}
-      main{display:block;padding:0}
-      .print-area{display:grid;place-items:center}
-      .label{border:none;margin:0}
+      aside{display:none !important}
+      .board{display:none !important}
+      .print-area{display:grid;place-items:center;min-height:100vh}
+      .label{border:none;margin:0;box-shadow:none}
       @page{size:100mm 150mm; margin:0}
     }
   </style>
@@ -65,6 +65,7 @@
 
       <div class="btns">
         <button class="primary" id="printBtn" type="button">Print 4×6 label</button>
+        <button id="printPopupBtn" type="button">Popup print (fallback)</button>
         <button id="clearBtn" class="ghost" type="button">Clear</button>
       </div>
 
@@ -93,9 +94,8 @@
           </div>
 
           <div class="qr">
-            <div class="qr-text">Join our WhatsApp Group for latest products</div>
             <img id="qrImage" alt="WhatsApp QR Code" />
-
+            <div class="qr-text">Join our WhatsApp Group for latest products</div>
           </div>
 
         </div>
@@ -114,11 +114,12 @@
       outPhone: document.getElementById('outPhone'),
       label: document.getElementById('label'),
       printBtn: document.getElementById('printBtn'),
+      printPopupBtn: document.getElementById('printPopupBtn'),
       clearBtn: document.getElementById('clearBtn'),
       qrImage: document.getElementById('qrImage')
     };
 
-    // Ensure QR code loads correctly, adjust path if needed
+    // Set QR path directly (GitHub Pages is case-sensitive)
     els.qrImage.src = './whatsapp-group-qr-code.JPG';
 
     const LS_KEY = 'minaar:postage:v1';
@@ -141,13 +142,36 @@
     bind(els.phone, els.outPhone);
     bind(els.address, els.outAddress);
 
-    els.printBtn.addEventListener('click', ()=>{
+    function cloneIntoPrintArea(){
       const area = document.querySelector('.print-area');
       area.innerHTML='';
       const clone = els.label.cloneNode(true);
       clone.style.border='none';
+      clone.style.width='100mm';
+      clone.style.height='150mm';
       area.appendChild(clone);
-      setTimeout(()=>window.print(),0);
+      return area;
+    }
+
+    // Standard print with RAF delay
+    els.printBtn.addEventListener('click', ()=>{
+      try{
+        cloneIntoPrintArea();
+        requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ window.print(); }); });
+      }catch(e){ alert('Print error: ' + e.message); }
+    });
+
+    // Popup print fallback
+    els.printPopupBtn.addEventListener('click', ()=>{
+      try{
+        const absoluteQR = els.qrImage && els.qrImage.src ? new URL(els.qrImage.src, location.href).href : '';
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Print</title>
+        <style>@page{size:100mm 150mm;margin:0}body{margin:0;display:grid;place-items:center}.label{width:100mm;height:150mm}</style>
+        </head><body>${els.label.outerHTML}</body></html>`;
+        const w = window.open('', '_blank');
+        w.document.open(); w.document.write(html.replace('id="qrImage"', `id="qrImage" src="${absoluteQR}"`)); w.document.close();
+        w.focus(); setTimeout(()=>{ w.print(); w.close(); }, 400);
+      }catch(e){ alert('Popup print error: ' + e.message); }
     });
 
     els.clearBtn.addEventListener('click', ()=>{
@@ -160,7 +184,3 @@
   </script>
 </body>
 </html>
-
-
-
-
