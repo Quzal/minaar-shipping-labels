@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Minaar • 4×6 Postage Label Printer</title>
+  <title>Minaar • 4×6 Postage Label Printer <!-- v2025-09-11-3 (CSS fix) --> </title>
   <style>
-    :root{ --bg:#0b0c10; --panel:#111318; --ink:#e8e8e8; --muted:#a9a9a9; --accent:#6ee7b7; }
+    :root{ --bg:#0b0c10; --panel:#111318; --ink:#e8e8e8; --muted:#a9a9a9; --accent:#6ee7b7; --valueSize:15px; }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
     .wrap{display:grid;grid-template-columns:360px 1fr;min-height:100svh}
@@ -25,30 +25,36 @@
 
     /* Fixed 4×6in (100×150mm) label area */
     .board{display:grid;place-items:center;width:100%}
-    .label{background:#fff;color:#000;position:relative;display:flex;flex-direction:column;gap:12px;padding:14px;border:1px dashed #ddd;width:100mm;height:150mm;justify-content:space-between}
+    .label{background:#fff;color:#000;position:relative;display:flex;flex-direction:column;gap:12px;padding:14px;border:1px dashed #ddd;width:100mm;height:150mm;justify-content:space-between;overflow:hidden}
     .label *{color:#000}
     .to{font-weight:800;font-size:18px;letter-spacing:0.5px}
     .toBox{border:2px solid #000;border-radius:8px;padding:12px;min-height:60mm;display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
     .toLine{display:flex;gap:8px;align-items:flex-start}
     .toLabel{width:90px;font-weight:700}
-    .toValue{flex:1;word-break:break-word;white-space:pre-wrap;font-size:15px;line-height:1.6;border-bottom:1px solid #000;min-height:22px}
+    .toValue{flex:1;word-break:break-word;white-space:pre-wrap;font-size:var(--valueSize);line-height:1.5;border-bottom:1px solid #000;min-height:22px}
     .from{border:1px solid #000;border-radius:8px;padding:10px;font-size:13px;margin-top:16px}
     .from .title{font-weight:800;margin-bottom:6px}
-    .qr{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:-5px}
-    .qr img{width:140px;height:140px;object-fit:contain;display:block}
-    .qr-text{font-weight:500;font-size:14px;text-align:center;margin-top:-5px}
+    .qr{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:5px}
+    .qr img{width:140px;height:140px;object-fit:contain;display:block; }
+    .qr-text{font-weight:700;font-size:14px;text-align:center;margin-top:-10px}
+
+    /* Avoid splitting the label across pages */
+    .label, .toBox, .from, .qr{break-inside:avoid-page;page-break-inside:avoid}
 
     @media print{
-      body{margin:0;background:#fff}
-      /* Hide only the editor sidebar; keep the live label visible */
-      aside{display:none !important}
-      .board{display:block !important}
-      .print-area{display:none !important}
-      .label{border:none;margin:0;box-shadow:none;width:100mm;height:150mm;overflow:hidden;break-inside:avoid-page;page-break-inside:avoid}
-      .toBox{gap:10px;padding:10px}
-      .toLabel{width:85px}
-      .toValue{line-height:1.35}
-      @page{size:100mm 150mm; margin:0}
+      /* Force the page and wrappers to exactly 100×150 mm with no extra padding/margins */
+      html, body{ width:100mm; height:150mm; margin:0; padding:0; background:#fff; overflow:hidden }
+      /* Sidebar off; keep only the live label visible */
+      aside{ display:none !important }
+      main{ padding:0 !important; margin:0 !important }
+      .wrap{ display:block !important; width:100mm; height:150mm; min-height:auto !important }
+      .board{ display:grid !important; place-items:center; width:100mm; height:150mm; margin:0 !important }
+      .print-area{ display:none !important }
+      .label{ border:none; margin:0; box-shadow:none; width:100mm; height:150mm; overflow:hidden; break-inside:avoid-page; page-break-inside:avoid }
+      .toBox{ gap:10px; padding:10px }
+      .toLabel{ width:85px }
+      .toValue{ line-height:1.35 }
+      @page{ size:100mm 150mm; margin:0 }
     }
   </style>
 </head>
@@ -124,7 +130,7 @@
     };
 
     // Set QR path directly (GitHub Pages is case-sensitive)
-    els.qrImage.src = './whatsapp-group-qr-code.JPG';
+    els.qrImage.src = './whatsapp-group-qr-code.JPG?v=' + Date.now();
 
     const LS_KEY = 'minaar:postage:v1';
     function save(){
@@ -138,7 +144,7 @@
     }
 
     function bind(input, outEl){
-      const fn = ()=>{ outEl.textContent = input.value.trim(); save(); };
+      const fn = ()=>{ outEl.textContent = input.value.trim(); save(); maybeResetFit(); };
       input.addEventListener('input', fn); fn();
     }
 
@@ -146,34 +152,38 @@
     bind(els.phone, els.outPhone);
     bind(els.address, els.outAddress);
 
-    function cloneIntoPrintArea(){
-      const area = document.querySelector('.print-area');
-      area.innerHTML='';
-      const clone = els.label.cloneNode(true);
-      clone.style.border='none';
-      clone.style.width='100mm';
-      clone.style.height='150mm';
-      area.appendChild(clone);
-      return area;
+    function maybeResetFit(){
+      // restore default size so next print can refit from baseline
+      document.documentElement.style.setProperty('--valueSize','15px');
     }
 
-    // Standard print with RAF delay
+    function shrinkToFit(){
+      // Reduce value font size until the label fits on one page
+      const label = els.label;
+      let iter = 0;
+      const getSize = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--valueSize'));
+      while(label.scrollHeight > label.clientHeight && iter < 8){
+        const next = Math.max(11, getSize() - 1);
+        document.documentElement.style.setProperty('--valueSize', next + 'px');
+        iter++;
+      }
+    }
+
+    // Standard print: call immediately in user gesture to avoid blocking
     els.printBtn.addEventListener('click', ()=>{
-      try{
-        cloneIntoPrintArea();
-        requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ window.print(); }); });
-      }catch(e){ alert('Print error: ' + e.message); }
+      try{ shrinkToFit(); window.print(); }catch(e){ alert('Print error: ' + e.message); }
     });
 
     // Popup print fallback
     els.printPopupBtn.addEventListener('click', ()=>{
       try{
+        shrinkToFit();
         const absoluteQR = els.qrImage && els.qrImage.src ? new URL(els.qrImage.src, location.href).href : '';
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Print</title>
-        <style>@page{size:100mm 150mm;margin:0}body{margin:0;display:grid;place-items:center}.label{width:100mm;height:150mm}</style>
-        </head><body>${els.label.outerHTML}</body></html>`;
+        <style>@page{size:100mm 150mm;margin:0}body{margin:0;display:grid;place-items:center}.label{width:100mm;height:150mm;overflow:hidden;break-inside:avoid-page;page-break-inside:avoid}.toValue{font-size:${getComputedStyle(document.documentElement).getPropertyValue('--valueSize').trim()}</style>
+        </head><body>${els.label.outerHTML.replace('id=\"qrImage\"','id=\"qrImage\" src=\"'+absoluteQR+'\"')}</body></html>`;
         const w = window.open('', '_blank');
-        w.document.open(); w.document.write(html.replace('id="qrImage"', `id="qrImage" src="${absoluteQR}"`)); w.document.close();
+        w.document.open(); w.document.write(html); w.document.close();
         w.focus(); setTimeout(()=>{ w.print(); w.close(); }, 400);
       }catch(e){ alert('Popup print error: ' + e.message); }
     });
@@ -181,6 +191,7 @@
     els.clearBtn.addEventListener('click', ()=>{
       els.name.value=''; els.address.value=''; els.phone.value='';
       els.outName.textContent=''; els.outAddress.textContent=''; els.outPhone.textContent='';
+      maybeResetFit();
       save();
     });
 
@@ -188,10 +199,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
