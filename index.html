@@ -31,7 +31,7 @@
     .toBox{border:2px solid #000;border-radius:8px;padding:12px;min-height:60mm;display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
     .toLine{display:flex;gap:8px;align-items:flex-start}
     .toLabel{width:90px;font-weight:700}
-    .toValue{flex:1;word-break:break-word;white-space:pre-wrap;font-size:var(--valueSize);line-height:1.5;border-bottom:1px solid #000;min-height:22px}
+    .toValue{font-weight: 500;flex:1;word-break:break-word;white-space:pre-wrap;font-size:var(--valueSize);line-height:1.5;border-bottom:1px solid #000;min-height:22px}
     .from{border:1px solid #000;border-radius:8px;padding:10px;font-size:13px;margin-top:16px}
     .from .title{font-weight:800;margin-bottom:6px}
     .qr{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:5px}
@@ -154,7 +154,7 @@
 
     function maybeResetFit(){
       // restore default size so next print can refit from baseline
-      document.documentElement.style.setProperty('--valueSize','15px');
+      document.documentElement.style.setProperty('--valueSize','20px');
     }
 
     function shrinkToFit(){
@@ -199,3 +199,4 @@
   </script>
 </body>
 </html>
+
